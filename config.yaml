@@ -1,0 +1,16 @@
+metadata:
+  name: example0
+  annotations:
+    hello: world
+data:
+  src: Fashion-MNIST
+layers:
+  - type: dense
+    size: 1000
+  - type: dense
+    size: 10
+  - type: softmax
+training:
+  device: cuda
+  optimizer: adam
+  epochs: 10
