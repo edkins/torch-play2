@@ -1,6 +1,9 @@
 import argparse
+from datetime import datetime
 import jsonschema
 import numpy as np
+import os
+import pickle
 import time
 import torch
 from torch import nn
@@ -92,11 +95,12 @@ def get_loss(loss: Optional[dict]):
     else:
         raise Exception(f"Loss function not known: {loss['type']}")
 
-def get_config(filename: str = 'config.yaml') -> dict:
+def get_config(filename: str = 'config.yaml') -> tuple[str,dict]:
     with open(filename) as f:
-        config = yaml.safe_load(f)
+        text = f.read()
+        config = yaml.safe_load(text)
         jsonschema.validate(instance=config, schema=config_schema)
-        return config
+        return text, config
 
 def parse_shape(size: Union[int,str,None]) -> Optional[tuple[int]]:
     if size == None:
@@ -145,11 +149,12 @@ class ConfiguredNN(nn.Module):
         return self.stack(x)
 
 def train(args):
-    config = get_config()
+    config_text, config = get_config()
     data_src = config['data']['src']
     batch_size = config['training']['batch_size']
     device = config['training'].get('device','cpu')
     num_epochs = config['training']['epochs']
+    name = config['metadata']['name']
 
     train_data = get_data(data_src, train=True)
     test_data = get_data(data_src, train=False)
@@ -160,8 +165,8 @@ def train(args):
     optimizer = get_optimizer(model.parameters(), config['training'].get('optimizer'))
     loss_fn = get_loss(config['training'].get('loss'))
     
-    train_dataloader = DataLoader(train_data, batch_size=batch_size)
-    test_dataloader = DataLoader(test_data, batch_size=batch_size)
+    train_dataloader = DataLoader(train_data, batch_size=batch_size, num_workers=8, shuffle=True, pin_memory=True, pin_memory_device=device, persistent_workers=True)
+    test_dataloader = DataLoader(test_data, batch_size=batch_size, num_workers=8, pin_memory=True, pin_memory_device=device, persistent_workers=True)
 
     for epoch in range(num_epochs):
         print(f"Epoch {epoch}")
@@ -170,6 +175,17 @@ def train(args):
         test_loop(test_dataloader, model, loss_fn, device)
         time_taken = time.monotonic() - start_time
         print(f"Time taken for epoch: {time_taken}")
+    save_model(name, config_text, model)
+
+def save_model(name: str, config_text: str, model):
+    date = datetime.now().strftime('%Y-%m-%dT%H-%M')
+    path = f'models/{name}--{date}'
+    os.makedirs(path)
+    with open(f'{path}/config.yaml', 'w') as f:
+        f.write(config_text)
+    with open(f'{path}/params.pickle', 'wb') as f:
+        pickle.dump(model.state_dict(), f)
+    print(f"Saved model to {path}/")
 
 def training_loop(dataloader, model, loss_fn, optimizer, device):
     size = len(dataloader.dataset)
@@ -190,15 +206,15 @@ def test_loop(dataloader, model, loss_fn, device):
     size = len(dataloader.dataset)
     #num_batches = len(dataloader)
     model.eval()
-    correct = 0
+    correct = torch.tensor(0, dtype=torch.float).to(device)
     with torch.no_grad():
         for X, y in dataloader:
             X = X.to(device)
             y = y.to(device)
             pred = model(X)
-            correct += (pred.argmax(1) == y).type(torch.float).sum().item()
+            correct += (pred.argmax(1) == y).type(torch.float).sum()
     correct /= size
-    print(f"Accuracy: {100*correct}%")
+    print(f"Accuracy: {100*correct.item()}%")
 
 def serve(args):
     pass
