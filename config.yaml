@@ -1,3 +1,4 @@
+version: "0.1"
 metadata:
   name: example0
   annotations:
@@ -7,10 +8,15 @@ data:
 layers:
   - type: dense
     size: 1000
+  - type: relu
   - type: dense
     size: 10
   - type: softmax
 training:
   device: cuda
-  optimizer: adam
+  optimizer:
+    type: adam
+  loss:
+    type: cross_entropy
   epochs: 10
+  batch_size: 64
