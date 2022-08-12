@@ -1,6 +1,7 @@
 import argparse
 import jsonschema
 import numpy as np
+import time
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
@@ -161,10 +162,14 @@ def train(args):
     
     train_dataloader = DataLoader(train_data, batch_size=batch_size)
     test_dataloader = DataLoader(test_data, batch_size=batch_size)
+
     for epoch in range(num_epochs):
         print(f"Epoch {epoch}")
+        start_time = time.monotonic()
         training_loop(train_dataloader, model, loss_fn, optimizer, device)
         test_loop(test_dataloader, model, loss_fn, device)
+        time_taken = time.monotonic() - start_time
+        print(f"Time taken for epoch: {time_taken}")
 
 def training_loop(dataloader, model, loss_fn, optimizer, device):
     size = len(dataloader.dataset)
