@@ -168,16 +168,21 @@ def train(args):
     train_dataloader = DataLoader(train_data, batch_size=batch_size, num_workers=8, shuffle=True, pin_memory=True, pin_memory_device=device, persistent_workers=True)
     test_dataloader = DataLoader(test_data, batch_size=batch_size, num_workers=8, pin_memory=True, pin_memory_device=device, persistent_workers=True)
 
+    results = {'epochs':[]}
+    initial_start_time = time.monotonic()
     for epoch in range(num_epochs):
         print(f"Epoch {epoch}")
         start_time = time.monotonic()
         training_loop(train_dataloader, model, loss_fn, optimizer, device)
-        test_loop(test_dataloader, model, loss_fn, device)
+        accuracy = test_loop(test_dataloader, model, loss_fn, device)
         time_taken = time.monotonic() - start_time
         print(f"Time taken for epoch: {time_taken}")
-    save_model(name, config_text, model)
+        results['epochs'].append({'time_taken': time_taken, 'accuracy': accuracy})
+    results['accuracy'] = accuracy
+    results['time_taken'] = time.monotonic() - initial_start_time
+    save_model(name, config_text, model, results)
 
-def save_model(name: str, config_text: str, model):
+def save_model(name: str, config_text: str, model, results):
     date = datetime.now().strftime('%Y-%m-%dT%H-%M')
     path = f'models/{name}--{date}'
     os.makedirs(path)
@@ -185,6 +190,8 @@ def save_model(name: str, config_text: str, model):
         f.write(config_text)
     with open(f'{path}/params.pickle', 'wb') as f:
         pickle.dump(model.state_dict(), f)
+    with open(f'{path}/results.yaml', 'w') as f:
+        f.write(yaml.dump(results))
     print(f"Saved model to {path}/")
 
 def training_loop(dataloader, model, loss_fn, optimizer, device):
@@ -202,7 +209,7 @@ def training_loop(dataloader, model, loss_fn, optimizer, device):
         if batch % 100 == 0:
             print(f"Batch {batch}/{num_batches}")
 
-def test_loop(dataloader, model, loss_fn, device):
+def test_loop(dataloader, model, loss_fn, device) -> float:
     size = len(dataloader.dataset)
     #num_batches = len(dataloader)
     model.eval()
@@ -215,6 +222,7 @@ def test_loop(dataloader, model, loss_fn, device):
             correct += (pred.argmax(1) == y).type(torch.float).sum()
     correct /= size
     print(f"Accuracy: {100*correct.item()}%")
+    return correct.item()
 
 def serve(args):
     pass
