@@ -13,6 +13,8 @@ from torchvision.transforms import ToTensor
 from typing import Optional, Union
 import yaml
 
+from serve import serve
+
 config_schema = {
     "type": "object",
     "properties": {
@@ -223,9 +225,6 @@ def test_loop(dataloader, model, loss_fn, device) -> float:
     correct /= size
     print(f"Accuracy: {100*correct.item()}%")
     return correct.item()
-
-def serve(args):
-    pass
 
 def main():
     parser = argparse.ArgumentParser()

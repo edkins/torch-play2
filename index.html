@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<script>
+"use strict";
+
+async function load() {
+	let response = await fetch('/api/model');
+	let items = (await response.json()).items;
+	let text = '';
+	for (let item of items) {
+		text += item.name + '\n';
+	}
+	document.getElementById('model-listing').textContent = text;
+}
+
+window.onload = load;
+</script>
+<style>
+
+.main {
+	display: grid;
+	grid-template-columns: 1fr 3fr;
+	grid-auto-rows: minmax(600px, auto);
+}
+
+.left-panel {
+	white-space: pre;
+	background: #eee;
+}
+
+</style>
+</head>
+<body>
+	<div class="main">
+		<div class="left-panel" id="model-listing"></div>
+	</div>
+</body>
+</html>
