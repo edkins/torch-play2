@@ -1,13 +1,21 @@
 version: "0.1"
 metadata:
-  name: example0
+  name: example1
   annotations:
     hello: world
 data:
   src: Fashion-MNIST
 layers:
+  - type: conv
+    size: 3x26x26
+    kernel_size: 3
+  - type: relu
+  - type: conv
+    size: 3x24x24
+    kernel_size: 3
+  - type: relu
   - type: dense
-    size: 1000
+    size: 100
   - type: relu
   - type: dense
     size: 10
