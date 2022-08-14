@@ -10,15 +10,18 @@ from model import get_config, get_results
 def create_highly_activating_input(layers: list[dict], x_shape: tuple[int], layer: int, neuron: tuple[int], device: str) -> np.ndarray:
     model = ConfiguredNN(layers[:layer+1], x_shape).to(device)
     inp = torch.rand(*x_shape, requires_grad=True, device=device)
-    optimizer = torch.optim.Adam([inp])
+    optimizer = torch.optim.Adam([inp], lr=0.001)
     model.eval()
-    for i in range(10):
+    for i in range(2000):
         model.zero_grad()
         optimizer.zero_grad()
-        output_layer = model(inp)
-        (-output_layer[neuron]).backward()
+        output_layer = model(inp.clamp(0,1))
+        value = -output_layer[neuron]
+        value.backward()
         optimizer.step()
-    return inp.detach().to('cpu').numpy()
+        if i % 100 == 0:
+            print(value.item())
+    return inp.clamp(0,1).detach().to('cpu').numpy()
 
 def get_test(filename: str):
     with open(filename) as f:
