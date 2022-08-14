@@ -1,22 +1,34 @@
 version: "0.1"
 metadata:
-  name: example1
-  annotations:
-    hello: world
+  name: lenet
 data:
   src: Fashion-MNIST
 layers:
   - type: conv
-    size: 3x26x26
-    kernel_size: 3
-  - type: relu
+    kernel_size: 5
+    padding: 2
+    size: 6x28x28
+  - type: sigmoid
+  - type: pool
+    kernel_size: 2
+    size: 6x14x14
+
   - type: conv
-    size: 3x24x24
-    kernel_size: 3
-  - type: relu
+    kernel_size: 5
+    size: 16x10x10
+  - type: sigmoid
+  - type: pool
+    kernel_size: 2
+    size: 16x5x5
+
   - type: dense
-    size: 100
-  - type: relu
+    size: 120
+  - type: sigmoid
+
+  - type: dense
+    size: 84
+  - type: sigmoid
+
   - type: dense
     size: 10
   - type: softmax
@@ -26,5 +38,5 @@ training:
     type: adam
   loss:
     type: cross_entropy
-  epochs: 10
+  epochs: 20
   batch_size: 64

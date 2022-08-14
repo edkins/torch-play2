@@ -38,7 +38,7 @@ class ConfiguredNN(nn.Module):
                     raise Exception(f"conv can currently only be used on 3d tensors. Got {x_shape}")
                 stride = layer.get('stride',1)
                 kernel_size = layer['kernel_size']
-                padding = 0
+                padding = layer.get('padding',0)
                 dilation = 1
                 d, h, w = x_shape
                 h = (h + 2 * padding - dilation * (kernel_size - 1) - 1) // stride + 1
@@ -55,10 +55,31 @@ class ConfiguredNN(nn.Module):
                     stride=stride,
                     padding=padding,
                     dilation=dilation))
+            elif typ == 'pool':
+                if len(x_shape) != 3:
+                    raise Exception(f"pool can currently only be used on 3d tensors. Got {x_shape}")
+                kernel_size = layer['kernel_size']
+                stride = layer.get('stride', kernel_size)
+                padding = layer.get('padding',0)
+                d, h, w = x_shape
+                h = (h + 2 * padding - kernel_size) // stride + 1
+                w = (w + 2 * padding - kernel_size) // stride + 1
+                if shape == None:
+                    raise Exception("Size must be specified for pool")
+                if shape[1] != h and shape[2] != w:
+                    raise Exception(f"Expected {h}x{w}. Got {shape[1]}x{shape[2]}")
+                if shape[0] != d:
+                    raise Exception(f'Pool cannot change number of channels')
+                x_shape = (d, h, w)
+                submodules.append(nn.AvgPool2d(kernel_size=kernel_size, stride=stride, padding=padding))
             elif typ == 'relu':
                 submodules.append(nn.ReLU())
                 if shape != None and shape != x_shape:
                     raise Exception("relu can't change shape")
+            elif typ == 'sigmoid':
+                submodules.append(nn.Sigmoid())
+                if shape != None and shape != x_shape:
+                    raise Exception("sigmoid can't change shape")
             elif typ == 'softmax':
                 submodules.append(nn.Softmax(dim=1))
                 if shape != None and shape != x_shape:

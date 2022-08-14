@@ -33,7 +33,8 @@ config_schema = {
                         "type":["integer","string"],
                         "regex": "^[0-9]+(x[0-9]+)*$"
                     },
-                    "kernel_size": {"type":"integer"}
+                    "kernel_size": {"type":"integer"},
+                    "padding": {"type":"integer"}
                 },
                 "required": ["type"]
             }
