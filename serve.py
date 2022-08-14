@@ -12,6 +12,7 @@ from transparency import create_and_run_test, get_test
 re_model_name = re.compile(r'^[-_a-zA-Z0-9]+$')
 re_model = re.compile(r'^\/api\/model\/([-_a-zA-Z0-9]+)$')
 re_test = re.compile(r'^\/api\/model\/([-_a-zA-Z0-9]+)\/test$')
+re_individual_test = re.compile(r'^\/api\/model\/([-_a-zA-Z0-9]+)\/test/([-_a-zA-Z0-9,]+)$')
 re_test_filename = re.compile(r'^(test-[-_a-zA-Z0-9,]+)\.yaml$')
 
 test_payload_schema = {
@@ -108,6 +109,18 @@ class RequestHandler(BaseHTTPRequestHandler):
                 tests.append({'name': name, 'layer':details['layer'], 'neuron':details['neuron']})
             self.wfile.write(json.dumps({
                 'items': tests
+            }).encode('utf-8'))
+        elif re_individual_test.match(path):
+            m = re_individual_test.match(path)
+            model_name = m[1]
+            test_name = m[2]
+            filename = f'models/{model_name}/{test_name}.yaml'
+            data = get_test(filename)
+            self.send_response(200)
+            self.send_header('content-type','application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                'data': data
             }).encode('utf-8'))
         else:
             self.send_error(404)

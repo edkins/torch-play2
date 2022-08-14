@@ -9,23 +9,25 @@ let available_models = [];
 let selected_model = undefined;
 let selected_model_details = undefined;
 let selected_model_tests = undefined;
+let selected_test_name = undefined;
+let selected_test_data = undefined;
 
 async function load() {
 	const response = await fetch('/api/model');
 	available_models = (await response.json()).items;
-	redraw_side_panel();
+	await redraw_side_panel();
 }
 
 async function refetch_model() {
 	if (selected_model === undefined) {
 		selected_model_details = undefined;
 		selected_model_tests = undefined;
-		return;
+	} else {
+		const response = await fetch(`/api/model/${selected_model}`);
+		selected_model_details = (await response.json()).data;
+		selected_model_tests = undefined;
 	}
-	const response = await fetch(`/api/model/${selected_model}`);
-	selected_model_details = (await response.json()).data;
-	selected_model_tests = undefined;
-	redraw_main_panel();
+	await redraw_main_panel();
 }
 
 async function refetch_tests() {
@@ -34,7 +36,10 @@ async function refetch_tests() {
 	const neuron = document.getElementById('neuron_dropdown').value;
 	const response = await fetch(`/api/model/${model}/test?layer=${layer}&neuron=${neuron}`);
 	selected_model_tests = (await response.json()).items;
+	selected_test_name = undefined;
+	selected_test_data = undefined;
 	repopulate_tests();
+	await repopulate_test_image();
 }
 
 async function post_new_test() {
@@ -50,6 +55,20 @@ async function post_new_test() {
 		})
 	});
 	refetch_tests();
+}
+
+async function refetch_test_data() {
+	const model = selected_model;
+	const layer = document.getElementById('layer_dropdown').value;
+	const neuron = document.getElementById('neuron_dropdown').value;
+	const test_name = selected_test_name;
+	if (model === undefined || test_name === undefined) {
+		selected_test_data = undefined;
+	} else {
+		const response = await fetch(`/api/model/${model}/test/${test_name}`);
+		selected_test_data = (await response.json()).data;
+	}
+	await repopulate_test_image();
 }
 
 function redraw_side_panel() {
@@ -71,7 +90,7 @@ function redraw_side_panel() {
 	}
 }
 
-function redraw_main_panel() {
+async function redraw_main_panel() {
 	const panel = document.getElementById('main-panel');
 	panel.innerHTML = '';
 	if (selected_model_details === undefined) {
@@ -92,7 +111,6 @@ function redraw_main_panel() {
 	ndropdown.onchange = refetch_tests;
 	dropdown.onchange = repopulate_neuron_dropdown;
 	panel.appendChild(ndropdown);
-	repopulate_neuron_dropdown();
 	
 	const new_test_button = document.createElement('button');
 	new_test_button.onclick = post_new_test;
@@ -102,6 +120,14 @@ function redraw_main_panel() {
 	const tests_div = document.createElement('div');
 	tests_div.id = 'tests';
 	panel.appendChild(tests_div);
+
+	const test_canvas = document.createElement('canvas');
+	test_canvas.width = 400;
+	test_canvas.height = 400;
+	test_canvas.id = 'test_canvas';
+	panel.appendChild(test_canvas);
+
+	await repopulate_neuron_dropdown();
 }
 
 function product(list) {
@@ -142,7 +168,7 @@ function shape_to_string(shape) {
 	return shape.join('x');
 }
 
-function repopulate_neuron_dropdown() {
+async function repopulate_neuron_dropdown() {
 	const dropdown = document.getElementById('neuron_dropdown');
 	const selected_layer = parseInt(document.getElementById('layer_dropdown').value);
 	const layer = selected_model_details.layers[selected_layer];
@@ -154,6 +180,7 @@ function repopulate_neuron_dropdown() {
 		option.textContent = `Neuron ${neuron}`;
 		dropdown.appendChild(option);
 	}
+	await refetch_tests();
 }
 
 function repopulate_tests() {
@@ -165,8 +192,39 @@ function repopulate_tests() {
 	for (let test of selected_model_tests) {
 		const div = document.createElement('div');
 		div.textContent = test.name;
+		div.onclick = () => {
+			selected_test_name = test.name;
+			return refetch_test_data();
+		};
 		tests_div.appendChild(div);
 	}
+}
+
+async function repopulate_test_image() {
+	const canvas = document.getElementById('test_canvas');
+	const ctx = canvas.getContext('2d');
+	ctx.clearRect(0, 0, canvas.width, canvas.height);
+	if (selected_test_data === undefined) {
+		return;
+	}
+	const channels = selected_test_data.x_shape[0];
+	const height = selected_test_data.x_shape[1];
+	const width = selected_test_data.x_shape[2];
+	const array = new Uint8ClampedArray(4 * width * height);
+	const channel = 0;
+	for (let x = 0; x < width; x++) {
+		for (let y = 0; y < height; y++) {
+			const index = 4 * (x + width * y);
+			const value = Math.round(255 * selected_test_data.data[channel][y][x]);
+			array[index] = value;
+			array[index+1] = value;
+			array[index+2] = value;
+			array[index+3] = 255;
+		}
+	}
+	const image_data = new ImageData(array, width, height);
+	const image = await createImageBitmap(image_data);
+	ctx.drawImage(image, 0, 0, 400, 400);
 }
 
 window.onload = load;
