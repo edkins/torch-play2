@@ -49,9 +49,10 @@ def train(args):
 
     train_data = get_data(data_src, train=True)
     test_data = get_data(data_src, train=False)
+    classes = list(train_data.classes)
 
     x_shape = tuple(train_data[0][0].shape)
-    y_shape = (len(train_data.classes),)
+    y_shape = (len(classes),)
     model = ConfiguredNN(config['layers'], x_shape).to(device)
     optimizer = get_optimizer(model.parameters(), config['training'].get('optimizer'))
     loss_fn = get_loss(config['training'].get('loss'))
@@ -74,6 +75,7 @@ def train(args):
     results['layers'] = model.layer_results
     results['x_shape'] = list(x_shape)
     results['y_shape'] = list(y_shape)
+    results['classes'] = classes
     save_model(name, config_text, model, results)
 
 def save_model(name: str, config_text: str, model, results):

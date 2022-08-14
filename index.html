@@ -11,6 +11,7 @@ let selected_model_details = undefined;
 let selected_model_tests = undefined;
 let selected_test_name = undefined;
 let selected_test_data = undefined;
+let timer = undefined;
 
 async function load() {
 	const response = await fetch('/api/model');
@@ -54,7 +55,15 @@ async function post_new_test() {
 			'neuron': neuron
 		})
 	});
-	refetch_tests();
+	window.setTimeout(refetch_tests, 4000);
+}
+
+function poll_test_data() {
+	if (timer !== undefined) {
+		clearInterval(timer);
+		timer = undefined;
+	}
+	timer = setInterval(refetch_test_data, 1000);
 }
 
 async function refetch_test_data() {
@@ -67,6 +76,12 @@ async function refetch_test_data() {
 	} else {
 		const response = await fetch(`/api/model/${model}/test/${test_name}`);
 		selected_test_data = (await response.json()).data;
+		if (selected_test_data.finished) {
+			if (timer !== undefined) {
+				clearInterval(timer);
+				timer = undefined;
+			}
+		}
 	}
 	await repopulate_test_image();
 }
@@ -172,12 +187,17 @@ async function repopulate_neuron_dropdown() {
 	const dropdown = document.getElementById('neuron_dropdown');
 	const selected_layer = parseInt(document.getElementById('layer_dropdown').value);
 	const layer = selected_model_details.layers[selected_layer];
+	const want_classes = (layer.shape.length === 1 && layer.shape[0] === selected_model_details.classes.length);
 	const count = product(layer.shape);
 	dropdown.innerHTML = '';
 	for (let neuron of all_neurons(layer.shape)) {
 		const option = document.createElement('option');
 		option.value = neuron;
 		option.textContent = `Neuron ${neuron}`;
+		if (want_classes) {
+			const clazz = selected_model_details.classes[parseInt(neuron)];
+			option.textContent += ` - ${clazz}`;
+		}
 		dropdown.appendChild(option);
 	}
 	await refetch_tests();
@@ -194,7 +214,7 @@ function repopulate_tests() {
 		div.textContent = test.name;
 		div.onclick = () => {
 			selected_test_name = test.name;
-			return refetch_test_data();
+			poll_test_data();
 		};
 		tests_div.appendChild(div);
 	}
@@ -203,8 +223,8 @@ function repopulate_tests() {
 async function repopulate_test_image() {
 	const canvas = document.getElementById('test_canvas');
 	const ctx = canvas.getContext('2d');
-	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	if (selected_test_data === undefined) {
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
 		return;
 	}
 	const channels = selected_test_data.x_shape[0];

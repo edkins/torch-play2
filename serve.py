@@ -84,7 +84,9 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({
                 'data': {
-                    'layers': results['layers']
+                    'layers': results['layers'],
+                    'classes': results.get('classes',[]),
+                    'y_shape': results['y_shape']
                 }
             }).encode('utf-8'))
         elif re_test.match(path):
