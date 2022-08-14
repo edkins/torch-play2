@@ -5,14 +5,59 @@
 <script>
 "use strict";
 
+let available_models = [];
+let selected_model = undefined;
+let selected_model_details = undefined;
+
 async function load() {
-	let response = await fetch('/api/model');
-	let items = (await response.json()).items;
-	let text = '';
-	for (let item of items) {
-		text += item.name + '\n';
+	const response = await fetch('/api/model');
+	available_models = (await response.json()).items;
+	redraw_side_panel();
+}
+
+async function refetch_model() {
+	if (selected_model === undefined) {
+		selected_model_details = undefined;
+		return;
 	}
-	document.getElementById('model-listing').textContent = text;
+	const response = await fetch(`/api/model/${selected_model}`);
+	selected_model_details = (await response.json()).data;
+	redraw_main_panel();
+}
+
+function redraw_side_panel() {
+	const panel = document.getElementById('model-listing');
+	panel.innerHTML = '';
+	for (let item of available_models) {
+		const div = document.createElement('div');
+		div.textContent = item.name;
+		div.onclick = () => {
+			selected_model = item.name;
+			redraw_side_panel();
+			return refetch_model();
+		};
+		if (item.name === selected_model) {
+			div.classList.add('selected');
+		}
+		panel.appendChild(div);
+	}
+}
+
+function redraw_main_panel() {
+	const panel = document.getElementById('main-panel');
+	panel.innerHTML = '';
+	if (selected_model_details === undefined) {
+		return;
+	}
+	const dropdown = document.createElement('select');
+	for (let i = 0; i < selected_model_details.layers.length; i++) {
+		const layer = selected_model_details.layers[i];
+		const option = document.createElement('option');
+		option.value = `${i}`;
+		option.textContent = `Layer ${i} - ${layer.type}`;
+		dropdown.appendChild(option);
+	}
+	panel.appendChild(dropdown);
 }
 
 window.onload = load;
@@ -30,11 +75,16 @@ window.onload = load;
 	background: #eee;
 }
 
+.left-panel .selected {
+	background: #ccc;
+}
+
 </style>
 </head>
 <body>
 	<div class="main">
 		<div class="left-panel" id="model-listing"></div>
+		<div id="main-panel"></div>
 	</div>
 </body>
 </html>

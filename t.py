@@ -14,66 +14,7 @@ from typing import Optional, Union
 import yaml
 
 from serve import serve
-
-config_schema = {
-    "type": "object",
-    "properties": {
-        "version": {"const":"0.1"},
-        "metadata": {
-            "type": "object",
-            "properties": {
-                "name": {"type":"string"},
-                "annotations": {
-                    "type": "object",
-                    "additionalProperties": {"type":"string"}
-                }
-            },
-            "required": ["name"]
-        },
-        "data": {
-            "type": "object",
-            "properties": {
-                "src": {"type": "string"}
-            },
-            "required": ["src"]
-        },
-        "layers": {
-            "type": "array",
-            "item": {
-                "type": "object",
-                "properties": {
-                    "type": {"type":"string"},
-                    "size": {
-                        "type":["integer","string"],
-                        "regex": "^[0-9]+(x[0-9]+)*$"
-                    }
-                },
-                "required": ["type"]
-            }
-        },
-        "training": {
-            "properties": {
-                "batch_size": {"type": "integer"},
-                "device": {"type": "string"},
-                "epochs": {"type": "integer"},
-                "optimizer": {
-                    "type": "object",
-                    "properties": {
-                        "type": {"type":"string"}
-                    }
-                },
-                "loss": {
-                    "type": "object",
-                    "properties": {
-                        "type": {"type":"string"}
-                    }
-                }
-            },
-            "required": ["epochs","batch_size"]
-        }
-    },
-    "required": ["metadata","data","layers","training","version"]
-}
+from model import get_config
 
 def get_data(src: str, train: bool) -> tuple:
     if src == 'Fashion-MNIST':
@@ -97,13 +38,6 @@ def get_loss(loss: Optional[dict]):
     else:
         raise Exception(f"Loss function not known: {loss['type']}")
 
-def get_config(filename: str = 'config.yaml') -> tuple[str,dict]:
-    with open(filename) as f:
-        text = f.read()
-        config = yaml.safe_load(text)
-        jsonschema.validate(instance=config, schema=config_schema)
-        return text, config
-
 def parse_shape(size: Union[int,str,None]) -> Optional[tuple[int]]:
     if size == None:
         return None
@@ -119,6 +53,7 @@ class ConfiguredNN(nn.Module):
     def __init__(self, layers: list[dict], x_shape: tuple[int]):
         super().__init__()
         submodules = []
+        layer_results = []
         for layer in layers:
             typ = layer['type']
             shape = parse_shape(layer.get('size'))
@@ -145,7 +80,9 @@ class ConfiguredNN(nn.Module):
                         raise Exception("softmax can't change shape")
             else:
                 raise Exception(f"Unrecognized layer type: {typ}")
+            layer_results.append({'type':typ, 'shape':list(x_shape)})
         self.stack = nn.Sequential(*submodules)
+        self.layer_results = layer_results
 
     def forward(self, x):
         return self.stack(x)
@@ -182,6 +119,9 @@ def train(args):
         results['epochs'].append({'time_taken': time_taken, 'accuracy': accuracy})
     results['accuracy'] = accuracy
     results['time_taken'] = time.monotonic() - initial_start_time
+    results['layers'] = model.layer_results
+    results['x_shape'] = list(x_shape)
+    results['y_shape'] = list(y_shape)
     save_model(name, config_text, model, results)
 
 def save_model(name: str, config_text: str, model, results):
