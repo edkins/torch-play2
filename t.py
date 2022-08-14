@@ -1,6 +1,7 @@
 import argparse
 from datetime import datetime
 import jsonschema
+import multiprocessing
 import numpy as np
 import os
 import pickle
@@ -121,6 +122,7 @@ def test_loop(dataloader, model, loss_fn, device) -> float:
     return correct.item()
 
 def main():
+    multiprocessing.set_start_method('spawn')
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(required=True)
     parser_train = subparsers.add_parser('train')

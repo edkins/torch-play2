@@ -1,4 +1,5 @@
 import jsonschema
+import pickle
 import yaml
 
 config_schema = {
@@ -76,3 +77,7 @@ def get_results(filename: str) -> dict:
         text = f.read()
         return yaml.safe_load(text)
 
+
+def get_state_dict(filename: str) -> dict:
+    with open(filename, 'rb') as f:
+        return pickle.load(f)

@@ -19,6 +19,7 @@ class ConfiguredNN(nn.Module):
         super().__init__()
         submodules = []
         layer_results = []
+        self.actual_layer_indices = []
         for layer in layers:
             typ = layer['type']
             shape = parse_shape(layer.get('size'))
@@ -76,6 +77,10 @@ class ConfiguredNN(nn.Module):
                 submodules.append(nn.ReLU())
                 if shape != None and shape != x_shape:
                     raise Exception("relu can't change shape")
+            elif typ == 'gelu':
+                submodules.append(nn.GELU())
+                if shape != None and shape != x_shape:
+                    raise Exception("gelu can't change shape")
             elif typ == 'sigmoid':
                 submodules.append(nn.Sigmoid())
                 if shape != None and shape != x_shape:
@@ -87,9 +92,16 @@ class ConfiguredNN(nn.Module):
             else:
                 raise Exception(f"Unrecognized layer type: {typ}")
             layer_results.append({'type':typ, 'shape':list(x_shape)})
-        self.stack = nn.Sequential(*submodules)
+            self.actual_layer_indices.append(len(submodules))
+        self.mlist = nn.ModuleList(submodules)
         self.layer_results = layer_results
 
     def forward(self, x):
-        return self.stack(x)
+        for layer in self.mlist:
+            x = layer(x)
+        return x
 
+    def get_neuron_output(self, x, layer:int, output_index:tuple[int]):
+        for layer in self.mlist[:self.actual_layer_indices[layer]]:
+            x = layer(x)
+        return x[output_index]
