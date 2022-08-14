@@ -1,6 +1,6 @@
 version: "0.1"
 metadata:
-  name: lenet
+  name: example3
 data:
   src: Fashion-MNIST
 layers:
@@ -8,7 +8,7 @@ layers:
     kernel_size: 5
     padding: 2
     size: 6x28x28
-  - type: sigmoid
+  - type: relu
   - type: pool
     kernel_size: 2
     size: 6x14x14
@@ -16,18 +16,18 @@ layers:
   - type: conv
     kernel_size: 5
     size: 16x10x10
-  - type: sigmoid
+  - type: relu
   - type: pool
     kernel_size: 2
     size: 16x5x5
 
   - type: dense
     size: 120
-  - type: sigmoid
+  - type: relu
 
   - type: dense
     size: 84
-  - type: sigmoid
+  - type: relu
 
   - type: dense
     size: 10

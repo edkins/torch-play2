@@ -9,7 +9,7 @@ from model import get_config, get_results
 
 def create_highly_activating_input(layers: list[dict], x_shape: tuple[int], layer: int, neuron: tuple[int], device: str) -> np.ndarray:
     def f(t):
-        return ((t * 0.2) + 0.4).clamp(0,1)
+        return (t - 0.5).tanh() * 0.5 + 0.5
     model = ConfiguredNN(layers[:layer+1], x_shape).to(device)
     inp = torch.rand(1, *x_shape, requires_grad=True, device=device)
     optimizer = torch.optim.Adam([inp], lr=0.01)
