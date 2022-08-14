@@ -30,7 +30,8 @@ function redraw_side_panel() {
 	panel.innerHTML = '';
 	for (let item of available_models) {
 		const div = document.createElement('div');
-		div.textContent = item.name;
+		const accuracy = (item.accuracy * 100).toFixed(1);
+		div.textContent = `${item.name} - ${accuracy}%`;
 		div.onclick = () => {
 			selected_model = item.name;
 			redraw_side_panel();
@@ -50,14 +51,46 @@ function redraw_main_panel() {
 		return;
 	}
 	const dropdown = document.createElement('select');
+	dropdown.id = 'layer_dropdown';
 	for (let i = 0; i < selected_model_details.layers.length; i++) {
 		const layer = selected_model_details.layers[i];
 		const option = document.createElement('option');
 		option.value = `${i}`;
-		option.textContent = `Layer ${i} - ${layer.type}`;
+		option.textContent = `Layer ${i} - [${shape_to_string(layer.shape)}] ${layer.type}`;
 		dropdown.appendChild(option);
 	}
 	panel.appendChild(dropdown);
+	const ndropdown = document.createElement('select');
+	ndropdown.id = 'neuron_dropdown';
+	dropdown.onchange = repopulate_neuron_dropdown;
+	panel.appendChild(ndropdown);
+	repopulate_neuron_dropdown();
+}
+
+function product(list) {
+	let result = 1;
+	for (let x of list) {
+		result *= x;
+	}
+	return result;
+}
+
+function shape_to_string(shape) {
+	return shape.join('x');
+}
+
+function repopulate_neuron_dropdown() {
+	const dropdown = document.getElementById('neuron_dropdown');
+	const selected_layer = parseInt(document.getElementById('layer_dropdown').value);
+	const layer = selected_model_details.layers[selected_layer];
+	const count = product(layer.shape);
+	dropdown.innerHTML = '';
+	for (let i = 0; i < count; i++) {
+		const option = document.createElement('option');
+		option.value = `${i}`;
+		option.textContent = `Neuron ${i}`;
+		dropdown.appendChild(option);
+	}
 }
 
 window.onload = load;

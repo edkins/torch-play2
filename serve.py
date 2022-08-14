@@ -16,15 +16,21 @@ class RequestHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(f.read())
         elif self.path == '/api/model':
-            models = []
+            model_names = []
             for entry in os.scandir('models'):
                 if entry.is_dir():
-                    models.append(entry.name)
+                    model_names.append(entry.name)
             self.send_response(200)
             self.send_header('content-type','application/json')
             self.end_headers()
+
+            models = []
+            for model_name in sorted(model_names):
+                results = get_results(f'models/{model_name}/results.yaml')
+                models.append({'name':model_name, 'accuracy':results['accuracy']})
+
             self.wfile.write(json.dumps({
-                'items': [{'name':name} for name in sorted(models)]
+                'items': models
             }).encode('utf-8'))
         elif self.path.startswith('/api/model/'):
             model_name = self.path[len('/api/model/'):]
@@ -46,4 +52,6 @@ class RequestHandler(BaseHTTPRequestHandler):
 
 def serve(args):
     port = 8000
-    HTTPServer(('127.0.0.1',port), RequestHandler).serve_forever()
+    server = HTTPServer(('127.0.0.1',port), RequestHandler)
+    print(f"Serving on port {port}")
+    server.serve_forever()
